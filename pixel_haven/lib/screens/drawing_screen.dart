@@ -218,17 +218,22 @@ class _DrawingScreenState extends State<DrawingScreen> {
   // Hàm xử lý Save
   Future<void> _handleSave() async {
     try {
-      await _fileService.saveFile(shapes);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Saved successfully!')));
+      // Gọi hàm save và nhận lại đường dẫn
+      final path = await _fileService.saveFile(shapes);
+
+      if (mounted && path != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved to: $path'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/shape.dart';
 import 'shape_factory.dart';
 
@@ -9,7 +10,7 @@ class FileService {
   static const List<int> magicNumber = [0x50, 0x48, 0x44, 0x00];
 
   // --- SAVE ---
-  Future<void> saveFile(List<Shape> shapes) async {
+  Future<String?> saveFile(List<Shape> shapes) async {
     // 1. Xây dựng nội dung file (Builder pattern)
     final builder = BytesBuilder();
 
@@ -31,35 +32,42 @@ class FileService {
 
     final bytes = builder.toBytes();
 
+    // Multi Platform: Andoroid, IOS, MacOS, Windows
     // 2. Chọn nơi lưu file
-    String? outputFile;
+    // String? outputFile;
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      // Trên mobile: truyền bytes trực tiếp
-      outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save PixelHaven Drawing',
-        fileName: 'drawing.phd',
-        type: FileType.any,
-        bytes: bytes, // ← Chỉ dùng trên Android/iOS
-      );
+    // if (Platform.isAndroid || Platform.isIOS) {
+    //   // // Trên mobile: truyền bytes trực tiếp
+    //   // outputFile = await FilePicker.platform.saveFile(
+    //   //   dialogTitle: 'Save PixelHaven Drawing',
+    //   //   fileName: 'drawing.phd',
+    //   //   type: FileType.any,
+    //   //   bytes: bytes, // ← Chỉ dùng trên Android/iOS
+    //   // );
+    // } else {
+    //   // Trên desktop: KHÔNG truyền bytes, chỉ lấy đường dẫn
+    //   outputFile = await FilePicker.platform.saveFile(
+    //     dialogTitle: 'Save PixelHaven Drawing',
+    //     fileName: 'drawing.phd',
+    //     type: FileType.custom,
+    //     allowedExtensions: ['phd'],
+    //   );
+    // }
+
+    // if (outputFile == null) {
+    //   throw Exception('Save cancelled by user');
+    // }
+
+    // // 3. Ghi xuống đĩa (chỉ cần trên desktop)
+    // if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    //   final file = File(outputFile);
+    //   await file.writeAsBytes(bytes);
+    // }
+
+    if (Platform.isWindows) {
+      return _saveOnWindows(bytes);
     } else {
-      // Trên desktop: KHÔNG truyền bytes, chỉ lấy đường dẫn
-      outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save PixelHaven Drawing',
-        fileName: 'drawing.phd',
-        type: FileType.custom,
-        allowedExtensions: ['phd'],
-      );
-    }
-
-    if (outputFile == null) {
-      throw Exception('Save cancelled by user');
-    }
-
-    // 3. Ghi xuống đĩa (chỉ cần trên desktop)
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      final file = File(outputFile);
-      await file.writeAsBytes(bytes);
+      return _saveOnAndroid(bytes);
     }
   }
 
@@ -131,5 +139,55 @@ class FileService {
     }
 
     return loadedShapes;
+  }
+
+  // --- CROSS PLATFORM ---
+  Future<String?> _saveOnWindows(Uint8List bytes) async {
+    String? outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save PixelHaven Drawing',
+      fileName: 'drawing.phd',
+      type: FileType.custom,
+      allowedExtensions: ['phd'],
+    );
+
+    if (outputFile != null) {
+      final file = File(outputFile);
+      await file.writeAsBytes(bytes);
+    }
+
+    return outputFile;
+  }
+
+  // Logic lưu trên Android (Tự động lưu vào thư mục Documents của App)
+  Future<String?> _saveOnAndroid(Uint8List bytes) async {
+    // // Lấy thư mục Documents dành riêng cho App => Cách này ko ổn vì nó lưu vào data mở bằng Android Studio
+    // // Android không cho phép lưu lung tung nếu không có quyền đặc biệt
+    // final directory = await getApplicationDocumentsDirectory();
+
+    // // Tạo tên file dựa trên thời gian thực: drawing_20231025_103000.phd
+    // final now = DateTime.now();
+    // final timestamp =
+    //     "${now.year}${now.month}${now.day}_${now.hour}${now.minute}${now.second}";
+    // final fileName = "pixelhaven_$timestamp.phd";
+
+    // final path = '${directory.path}/$fileName';
+    // final file = File(path);
+
+    // await file.writeAsBytes(bytes);
+    // return path; // Trả về đường dẫn để báo user
+
+    // Trên mobile: truyền bytes trực tiếp
+    String? outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save PixelHaven Drawing',
+      fileName: 'drawing.phd',
+      type: FileType.any,
+      bytes: bytes, // ← Chỉ dùng trên Android/iOS
+    );
+
+    if (outputFile == null) {
+      throw Exception('Save cancelled by user');
+    }
+
+    return outputFile;
   }
 }
