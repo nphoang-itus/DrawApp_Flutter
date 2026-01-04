@@ -82,8 +82,6 @@ class ShapeFactory {
           strokeColor: color,
           strokeWidth: strokeWidth,
         );
-      default:
-        throw Exception("Unknown shape type index: $typeIndex");
     }
   }
 }

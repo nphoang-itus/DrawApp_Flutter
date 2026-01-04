@@ -1,10 +1,14 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui; // Cần cái này để xử lý ảnh
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:pixel_haven/models/circle.dart';
 import 'package:pixel_haven/models/ellipse.dart';
 import 'package:pixel_haven/models/line.dart';
 import 'package:pixel_haven/models/point.dart';
 import 'package:pixel_haven/models/rectangle.dart';
 import 'package:pixel_haven/models/square.dart';
+import 'package:pixel_haven/services/export_service.dart';
 import 'package:pixel_haven/services/file_service.dart';
 import '../models/shape.dart';
 import '../widgets/drawing_canvas.dart';
@@ -21,6 +25,8 @@ class _DrawingScreenState extends State<DrawingScreen> {
   final List<Shape> shapes = []; // Danh sách đã chốt
   Shape? currentShape; // Hình đang vẽ (Preview)
   final FileService _fileService = FileService();
+  final GlobalKey _canvasKey = GlobalKey(); // Key để chụp ảnh
+  final ExportService _exportService = ExportService(); // Service xuất ảnh
 
   // --- STATE CÔNG CỤ ---
   ShapeType selectedTool = ShapeType.line; // Mặc định vẽ đường thẳng
@@ -134,6 +140,11 @@ class _DrawingScreenState extends State<DrawingScreen> {
             tooltip: 'Save .phd',
           ),
           IconButton(
+            icon: const Icon(Icons.image),
+            onPressed: _handleExport,
+            tooltip: 'Export to PNG',
+          ),
+          IconButton(
             icon: const Icon(Icons.folder_open),
             onPressed: _handleLoad,
             tooltip: 'Open .phd',
@@ -176,17 +187,21 @@ class _DrawingScreenState extends State<DrawingScreen> {
               onPanStart: _onPanStart,
               onPanUpdate: _onPanUpdate,
               onPanEnd: _onPanEnd,
-              child: Container(
-                color: Colors.white,
-                width: double.infinity,
-                height: double.infinity,
-                // Sử dụng ClipRect để nét vẽ không bị tràn ra ngoài vùng chứa
-                child: ClipRect(
-                  child: DrawingCanvas(
-                    shapes: shapes,
-                    currentShape: currentShape, // Truyền preview xuống
-                    width: size.width,
-                    height: size.height,
+
+              child: RepaintBoundary(
+                key: _canvasKey,
+                child: Container(
+                  color: Colors.white,
+                  width: double.infinity,
+                  height: double.infinity,
+                  // Sử dụng ClipRect để nét vẽ không bị tràn ra ngoài vùng chứa
+                  child: ClipRect(
+                    child: DrawingCanvas(
+                      shapes: shapes,
+                      currentShape: currentShape, // Truyền preview xuống
+                      width: size.width,
+                      height: size.height,
+                    ),
                   ),
                 ),
               ),
@@ -253,6 +268,46 @@ class _DrawingScreenState extends State<DrawingScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error loading: $e')));
+      }
+    }
+  }
+
+  // Hàm xử lý xuất ảnh PNG
+  Future<void> _handleExport() async {
+    try {
+      // 1. Tìm RenderObject của cái Boundary đang gắn Key
+      final boundary =
+          _canvasKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+
+      if (boundary == null) return;
+
+      // 2. Chuyển thành Image
+      // pixelRatio: 3.0 giúp ảnh nét hơn (gấp 3 lần độ phân giải màn hình)
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+
+      // 3. Chuyển thành Bytes (PNG)
+      final ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+
+      if (byteData == null) return;
+
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      // 4. Gọi Service để lưu
+      await _exportService.exportImage(pngBytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image exported successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
