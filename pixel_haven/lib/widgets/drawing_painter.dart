@@ -35,9 +35,6 @@ class DrawingPainter extends CustomPainter {
 
     // Logic: Nếu danh sách hình cũ khác danh sách hình mới -> Vẽ lại.
     return oldDelegate.shapes.length != shapes.length ||
-        oldDelegate.shapes != shapes;
-    // Lưu ý: So sánh list trong Dart cần cẩn thận,
-    // nhưng tạm thời return true để đảm bảo update mượt mà khi dev.
-    // return true;
+        oldDelegate.currentShape != currentShape;
   }
 }

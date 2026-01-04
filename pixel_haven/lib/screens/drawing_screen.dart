@@ -5,6 +5,7 @@ import 'package:pixel_haven/models/line.dart';
 import 'package:pixel_haven/models/point.dart';
 import 'package:pixel_haven/models/rectangle.dart';
 import 'package:pixel_haven/models/square.dart';
+import 'package:pixel_haven/services/file_service.dart';
 import '../models/shape.dart';
 import '../widgets/drawing_canvas.dart';
 
@@ -19,6 +20,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
   // --- STATE DỮ LIỆU ---
   final List<Shape> shapes = []; // Danh sách đã chốt
   Shape? currentShape; // Hình đang vẽ (Preview)
+  final FileService _fileService = FileService();
 
   // --- STATE CÔNG CỤ ---
   ShapeType selectedTool = ShapeType.line; // Mặc định vẽ đường thẳng
@@ -91,12 +93,14 @@ class _DrawingScreenState extends State<DrawingScreen> {
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    // 2. Người dùng di chuyển tay
     if (currentShape == null) return;
 
     setState(() {
-      // Cập nhật điểm cuối của hình tạm thời
-      currentShape!.endPoint = details.localPosition;
+      // Tạo lại object mới với endPoint mới
+      currentShape = _createShape(
+        currentShape!.startPoint,
+        details.localPosition,
+      );
     });
   }
 
@@ -124,6 +128,16 @@ class _DrawingScreenState extends State<DrawingScreen> {
         title: const Text('PixelHaven'),
         backgroundColor: Colors.blueGrey.shade50,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _handleSave,
+            tooltip: 'Save .phd',
+          ),
+          IconButton(
+            icon: const Icon(Icons.folder_open),
+            onPressed: _handleLoad,
+            tooltip: 'Open .phd',
+          ),
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () => setState(() => shapes.clear()),
@@ -156,6 +170,8 @@ class _DrawingScreenState extends State<DrawingScreen> {
           // 2. CANVAS AREA
           Expanded(
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+
               // Đăng ký các sự kiện chạm
               onPanStart: _onPanStart,
               onPanUpdate: _onPanUpdate,
@@ -196,5 +212,43 @@ class _DrawingScreenState extends State<DrawingScreen> {
         });
       },
     );
+  }
+
+  // --- FILE SERVICE ---
+  // Hàm xử lý Save
+  Future<void> _handleSave() async {
+    try {
+      await _fileService.saveFile(shapes);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved successfully!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
+      }
+    }
+  }
+
+  // Hàm xử lý Load
+  Future<void> _handleLoad() async {
+    try {
+      final loadedShapes = await _fileService.loadFile();
+      if (loadedShapes.isNotEmpty) {
+        setState(() {
+          shapes.clear();
+          shapes.addAll(loadedShapes);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading: $e')));
+      }
+    }
   }
 }

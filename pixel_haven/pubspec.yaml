@@ -39,13 +39,13 @@ dependencies:
   path_provider: ^2.1.2
 
   # Chọn file từ máy (để load file .phd)
-  file_picker: ^8.1.4  # Nâng cấp lên bản mới nhất
+  file_picker: ^10.3.8
 
   # Xử lý quyền truy cập (quan trọng cho Android 13+)
   permission_handler: ^11.3.0
 
   # Lưu ảnh vào thư viện ảnh (Gallery)
-  gal: ^2.3.0  # Hoặc thử package khác nếu vẫn lỗi
+  gal: ^2.3.0
 
   # (Optional) UUID để tạo ID duy nhất cho các Shape nếu cần
   uuid: ^4.3.3

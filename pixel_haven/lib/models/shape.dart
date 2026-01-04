@@ -1,7 +1,15 @@
+import 'dart:typed_data';
 import 'dart:ui'; // Cần thư viện này để dùng Canvas, Paint, Color, Offset
 
 // Enum để định danh loại hình (Rất quan trọng cho Phase 4 - Lưu file)
-enum ShapeType { point, line, rectangle, square, circle, ellipse }
+enum ShapeType {
+  point, // 0
+  line, // 1
+  rectangle, // 2
+  square, // 3
+  circle, // 4
+  ellipse, // 5
+}
 
 abstract class Shape {
   // 1. Dữ liệu hình học (Geometry)
@@ -34,4 +42,21 @@ abstract class Shape {
 
   // Getter để lấy loại hình (hữu ích khi lưu file)
   ShapeType get type;
+
+  Uint8List toBytes() {
+    final buffer = ByteData(45);
+
+    buffer.setUint8(0, type.index);
+
+    buffer.setFloat64(1, startPoint.dx, Endian.host);
+    buffer.setFloat64(9, startPoint.dy, Endian.host);
+
+    buffer.setFloat64(17, endPoint.dx, Endian.host);
+    buffer.setFloat64(25, endPoint.dy, Endian.host);
+
+    buffer.setInt32(33, strokeColor.value, Endian.host);
+    buffer.setFloat64(37, strokeWidth, Endian.host);
+
+    return buffer.buffer.asUint8List();
+  }
 }
